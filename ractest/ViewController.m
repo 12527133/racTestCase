@@ -33,13 +33,13 @@
  
    [[compentFactory button:@"testFlattenMap" frame:CGRectMake(x, y += s, w, h) parent:self.view] addTarget:self action:@selector(clickHandler:) forControlEvents:UIControlEventTouchUpInside];
     
-    [[compentFactory button:@"take" frame:CGRectMake(x, y += s, w, h) parent:self.view] addTarget:self action:@selector(clickHandler:) forControlEvents:UIControlEventTouchUpInside];
+    [[compentFactory button:@"takeUntil" frame:CGRectMake(x, y += s, w, h) parent:self.view] addTarget:self action:@selector(clickHandler:) forControlEvents:UIControlEventTouchUpInside];
 
     
     [[compentFactory button:@"switchToLatest" frame:CGRectMake(x, y += s, w, h) parent:self.view] addTarget:self action:@selector(clickHandler:) forControlEvents:UIControlEventTouchUpInside];
     
     [[compentFactory button:@"skip" frame:CGRectMake(x, y += s, w, h) parent:self.view] addTarget:self action:@selector(clickHandler:) forControlEvents:UIControlEventTouchUpInside];
-    
+    [[compentFactory button:@"distinctUntilChanged" frame:CGRectMake(x, y += s, w, h) parent:self.view] addTarget:self action:@selector(clickHandler:) forControlEvents:UIControlEventTouchUpInside];
     [[compentFactory button:@"testReplaySubject" frame:CGRectMake(x, y += s, w, h) parent:self.view] addTarget:self action:@selector(clickHandler:) forControlEvents:UIControlEventTouchUpInside];
     
     [[compentFactory button:@"testFlattenMapSameSubscriber" frame:CGRectMake(x, y += s, w, h) parent:self.view] addTarget:self action:@selector(clickHandler:) forControlEvents:UIControlEventTouchUpInside];
@@ -69,7 +69,7 @@
     }];
     [dis dispose];
 }
-
+ 
 - (void)testFilter {
     RACSignal *signal = [@[ @1, @2, @3 ] rac_sequence].signal ;
     signal = [signal filter:^BOOL(NSNumber *value) {
@@ -138,27 +138,29 @@
 
 
 
-- (void)take {
+- (void)takeUntil {
     RACSubject *sub = [RACSubject subject];
-    RACSubject *untilsub = [RACSubject subject];
-
-    [[sub takeUntil:untilsub] subscribeNext:^(id  _Nullable x) {
-        NSLog(@"%@", x);
-        
+    [sub subscribeNext:^(id  _Nullable x) {
+        NSLog(@"sub:%@", x);
     }];
-    //    [[sub skip:2] subscribeNext:^(id  _Nullable x) {
-    //        NSLog(@"%@", x);
-    //    }];
+    
+    RACSubject *untilsub = [RACSubject subject];
+    [untilsub subscribeNext:^(id  _Nullable x) {
+        NSLog(@"untilsub:%@", x);
+    }];
+    
+    // takeUntil其实就是sub信号 在untilsub信号发送complete事件前有效。因为一但untilsub发送complete后，就会销毁[sub takeUntil:untilsub]及untilsub，但是sub并未被销毁哦；
+    [[sub takeUntil:untilsub] subscribeNext:^(id  _Nullable x) {
+        NSLog(@"takeUntilSignal:%@", x);
+    }];
+    
     [sub sendNext:@"3"];
-
-    [sub sendNext:@"1"];
-    [sub sendNext:@"1"];
+    
+    [untilsub sendNext:@"u6"];
     [untilsub sendCompleted];
-
+    [untilsub sendNext:@"u6"];
+    
     [sub sendNext:@"1"];
-    [sub sendNext:@"2"];
-    [sub sendNext:@"4"];
-    [sub sendNext:@"5"];
     
 }
 
@@ -181,17 +183,31 @@
     [signalofsignal sendNext:signal3];
 
     [signal sendNext:@"sig"];
-    
+    [signal3 sendNext:@"sig3"];
+    [signal sendNext:@"sig2"];
+    [signal3 sendNext:@"sig4"];
 }
 
-- (void)skip {
+- (void)distinctUntilChanged {
     RACSubject *sub = [RACSubject subject];
     [[sub distinctUntilChanged] subscribeNext:^(id  _Nullable x) {
         NSLog(@"%@", x);
     }];
-//    [[sub skip:2] subscribeNext:^(id  _Nullable x) {
-//        NSLog(@"%@", x);
-//    }];
+
+    [sub sendNext:@"1"];
+    [sub sendNext:@"1"];
+    [sub sendNext:@"2"];
+    [sub sendNext:@"2"];
+    [sub sendNext:@"3"];
+    [sub sendNext:@"4"];
+
+}
+
+- (void)skip {
+    RACSubject *sub = [RACSubject subject];
+    [[sub skip:2] subscribeNext:^(id  _Nullable x) {
+        NSLog(@"%@", x);
+    }];
     
     [sub sendNext:@"1"];
     [sub sendNext:@"1"];
@@ -200,7 +216,6 @@
     [sub sendNext:@"3"];
     [sub sendNext:@"4"];
     [sub sendNext:@"5"];
-
 }
 
 // test replaySubject
